@@ -1,18 +1,18 @@
 import os
 
 import lightning as L
-import pandas as pd
-import seaborn as sn
+# import pandas as pd
+# import seaborn as sn
 import torch
 import numpy as np
-from IPython.display import display
-from lightning.pytorch.loggers import CSVLogger
+# from IPython.display import display
+# from lightning.pytorch.loggers import CSVLogger
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
-from torchmetrics import Accuracy
-from torchvision import transforms
-from torchvision.datasets import MNIST
+# from torchmetrics import Accuracy
+# from torchvision import transforms
+# from torchvision.datasets import MNIST
 from typing import Dict, List
 import torch.distributed as dist
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -49,7 +49,35 @@ class LitModel(L.LightningModule):
         self.log("test_loss", loss)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=0.02)
+        optimizer = torch.optim.AdamW(
+            params=self.net.parameters(),
+            lr=0.001,
+            betas=(0.9, 0.999),
+            eps=1e-08,
+            weight_decay=0.0,
+            amsgrad=True,
+        )
+        '''
+        # scheduler = LambdaLR(optimizer, self.lr_lambda_func)
+        scheduler = pl_bolts.optimizers.lr_scheduler.LinearWarmupCosineAnnealingLR(
+            optimizer=optimizer, 
+            warmup_epochs=10, 
+            max_epochs=10000, 
+            warmup_start_lr=0.0, 
+            eta_min=0.0, 
+            last_epoch=-1
+        )
+
+        output_dict = {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                'scheduler': scheduler,
+                'interval': 'step',
+                'frequency': 1,
+            }
+        }
+        '''
+        return optimizer
 
 
 class Mnist:
@@ -139,8 +167,8 @@ class DistributedSamplerWrapper:
 def add():
     
     batch_size_per_device = 16
-    # devices_num = torch.cuda.device_count()
-    devices_num = 2
+    devices_num = torch.cuda.device_count()
+    # devices_num = 1
     batch_size = batch_size_per_device * devices_num
 
     net = Dnn()
@@ -169,7 +197,7 @@ def add():
         dataset=train_dataset, 
         batch_sampler=batch_sampler, 
         num_workers=0,
-    )
+    ) 
 
     checkpoint_callback1 = ModelCheckpoint(
         dirpath="./tmp",
@@ -186,8 +214,8 @@ def add():
 
     # Initialize a trainer
     trainer = L.Trainer(
-        # accelerator="auto",
-        accelerator="cpu",
+        accelerator="auto",
+        # accelerator="cpu",
         devices=devices_num,
         max_epochs=10,
         num_nodes=1,
